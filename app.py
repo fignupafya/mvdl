@@ -58,7 +58,7 @@ class Manager:
         self.lock = threading.Lock()
         self._seq = 0
         self.settings = {
-            "download_dir": os.path.join(DATA, "downloads"),
+            "download_dir": os.path.join(os.path.expanduser("~"), "Downloads"),
             "max_parallel": 3,
             "default_conn": 16,
         }
@@ -385,6 +385,8 @@ class Handler(BaseHTTPRequestHandler):
                     pass
             MGR._save_settings()
             self._send(200, {"ok": True, "settings": MGR.settings}); return
+        if p == "/api/pickfolder":
+            self._send(200, native_pick_folder(body.get("initial", ""))); return
         self._send(404, {"error": "yok"})
 
 
@@ -394,6 +396,77 @@ def free_port():
     port = s.getsockname()[1]
     s.close()
     return port
+
+
+_pick_lock = threading.Lock()
+
+
+def _tk_pick_folder(initial, out):
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        try:
+            root.update()
+        except Exception:
+            pass
+        p = filedialog.askdirectory(
+            initialdir=(initial or None),
+            title="mvdl - choose download folder")
+        try:
+            root.destroy()
+        except Exception:
+            pass
+        out["path"] = p or ""
+        out["ok"] = True
+    except Exception as e:  # noqa: BLE001
+        out["error"] = str(e)
+
+
+def native_pick_folder(initial):
+    """Yerel 'klasor sec' penceresi (capraz platform). {path} ya da {error} doner.
+
+    Once tkinter (Win/Mac'te hazir; Linux'ta python3-tk varsa). Olmazsa OS'a ozgu
+    yedek: Linux zenity/kdialog, macOS osascript, Windows PowerShell dialog.
+    Hicbiri yoksa {error} -> arayuz kullaniciyi yolu elle yazmaya yonlendirir.
+    """
+    out = {}
+    with _pick_lock:
+        th = threading.Thread(target=_tk_pick_folder, args=(initial, out))
+        th.start()
+        th.join()
+    if out.get("ok"):
+        return {"path": out.get("path", "")}
+
+    try:
+        if sys.platform.startswith("linux"):
+            home = initial or os.path.expanduser("~")
+            for tool in (["zenity", "--file-selection", "--directory"],
+                         ["kdialog", "--getexistingdirectory", home]):
+                if shutil.which(tool[0]):
+                    r = subprocess.run(tool, capture_output=True, text=True)
+                    if r.returncode == 0:
+                        return {"path": r.stdout.strip()}
+                    return {"path": ""}          # kullanici iptal
+        elif sys.platform == "darwin":
+            script = 'POSIX path of (choose folder with prompt "Choose download folder")'
+            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            if r.returncode == 0:
+                return {"path": r.stdout.strip()}
+            return {"path": ""}
+        elif sys.platform.startswith("win"):
+            ps = ("Add-Type -AssemblyName System.Windows.Forms;"
+                  "$f=New-Object System.Windows.Forms.FolderBrowserDialog;"
+                  "if($f.ShowDialog() -eq 'OK'){[Console]::Out.Write($f.SelectedPath)}")
+            r = subprocess.run(["powershell", "-NoProfile", "-STA", "-Command", ps],
+                               capture_output=True, text=True)
+            if r.returncode == 0:
+                return {"path": r.stdout.strip()}
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}
+    return {"error": out.get("error", "no native folder picker available")}
 
 
 def _spawn(args):

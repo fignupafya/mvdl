@@ -169,8 +169,8 @@
         <label class="fld" id="subsField" hidden><span data-i18n="add.subs">Subtitles</span>
           <select id="optSubs"></select></label>
         <label class="fld"><span data-i18n="add.folder">Folder</span>
-          <div class="row"><input id="optDir" readonly>
-            <button class="btn-ghost btn-sm" onclick="openFolder(setOptDir)" data-i18n="add.change">Change</button></div></label>
+          <div class="row"><input id="optDir" placeholder="C:\...\downloads">
+            <button class="btn-ghost btn-sm" onclick="pickFolder(v=>el('optDir').value=v)" data-i18n="add.change">Browse…</button></div></label>
       </div>
     </div>
     <div class="foot">
@@ -186,8 +186,8 @@
     <h3><span data-i18n="set.title">Settings</span><button class="x" onclick="close_('setOv')">×</button></h3>
     <div class="body">
       <label class="fld"><span data-i18n="set.defaultFolder">Default download folder</span>
-        <div class="row"><input id="setDir" readonly>
-          <button class="btn-ghost btn-sm" onclick="openFolder(v=>setDir.value=v)" data-i18n="add.change">Change</button></div></label>
+        <div class="row"><input id="setDir" placeholder="C:\...\downloads">
+          <button class="btn-ghost btn-sm" onclick="pickFolder(v=>el('setDir').value=v)" data-i18n="add.change">Browse…</button></div></label>
       <div class="row">
         <label class="fld" style="flex:1"><span data-i18n="set.maxParallel">Max simultaneous downloads (global)</span>
           <input id="setPar" type="number" min="1" max="30"></label>
@@ -200,22 +200,6 @@
     <div class="foot">
       <button class="btn-ghost" onclick="close_('setOv')" data-i18n="set.close">Close</button>
       <button class="btn-pri" onclick="saveSettings()" data-i18n="set.save">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- FOLDER MODAL -->
-<div class="ov" id="fldOv">
-  <div class="modal">
-    <h3><span data-i18n="fld.title">Choose folder</span><button class="x" onclick="close_('fldOv')">×</button></h3>
-    <div class="body">
-      <div class="drives" id="fldDrives"></div>
-      <div class="path" id="fldPath"></div>
-      <div class="folderlist" id="fldList"></div>
-    </div>
-    <div class="foot">
-      <button class="btn-ghost" onclick="close_('fldOv')" data-i18n="btn.cancel">Cancel</button>
-      <button class="btn-pri" onclick="chooseFolder()" data-i18n="fld.choose">Choose this folder</button>
     </div>
   </div>
 </div>
@@ -258,7 +242,7 @@ const I18N = {
   "set.maxParallel":"Max simultaneous downloads (global)","set.defaultConn":"Default connections per download",
   "set.hint":"<b>Max simultaneous downloads</b> = total across all sites (not per site). Many at once from different sites is safe against bans, but your bandwidth is split — more isn't faster.<br><b>Connections</b> 8–16 is ideal; higher rarely helps and raises the throttle (429) risk — the app auto-reduces when throttled.",
   "set.close":"Close","set.save":"Save","set.ffWarn":"ffmpeg not found — output stays .ts. Run setup (or add ffmpeg) to get .mp4.",
-  "fld.title":"Choose folder","fld.up":"⬆ up","fld.empty":"(no subfolders)","fld.choose":"Choose this folder",
+  "fld.title":"Choose folder","fld.up":"⬆ up","fld.empty":"(no subfolders)","fld.choose":"Choose this folder","fld.err":"Couldn't open the folder picker — just type or paste the path in the box.",
   "open.fail":"Couldn't open: {m}","unit.sec":"s","unit.min":"min","range.end":"end"
  },
  tr:{
@@ -296,7 +280,7 @@ const I18N = {
   "set.maxParallel":"Aynı anda en fazla indirme (genel)","set.defaultConn":"İndirme başına varsayılan bağlantı",
   "set.hint":"<b>Aynı anda en fazla indirme</b> = tüm siteler toplamı (site başına değil). Farklı sitelerden çok indirme ban açısından güvenli ama internet hızın hepsine bölünür — daha fazlası hızlandırmaz.<br><b>Bağlantı</b> 8–16 ideal; yükseği genelde hızlandırmaz, engel (429) riskini artırır — uygulama takılınca otomatik azaltır.",
   "set.close":"Kapat","set.save":"Kaydet","set.ffWarn":"ffmpeg bulunamadı — çıktı .ts olur. Kurulumu çalıştır (veya ffmpeg ekle) ki .mp4 üretilsin.",
-  "fld.title":"Klasör Seç","fld.up":"⬆ üst klasör","fld.empty":"(alt klasör yok)","fld.choose":"Bu klasörü seç",
+  "fld.title":"Klasör Seç","fld.up":"⬆ üst klasör","fld.empty":"(alt klasör yok)","fld.choose":"Bu klasörü seç","fld.err":"Klasör seçici açılamadı — yolu kutuya elle yazıp yapıştırabilirsin.",
   "open.fail":"Açılamadı: {m}","unit.sec":"sn","unit.min":"dk","range.end":"son"
  }
 };
@@ -458,15 +442,14 @@ function saveSettings(){api('POST','/api/settings',{download_dir:el('setDir').va
   max_parallel:+el('setPar').value||3,default_conn:+el('setConn').value||16}).then(()=>{close_('setOv');poll();});}
 function close_(id){el(id).classList.remove('on');}
 
-// ---------------- folder picker ----------------
-function openFolder(cb){FLDCB=cb;loadFolder(STATE.settings.download_dir||'');el('fldOv').classList.add('on');}
-function loadFolder(path){api('GET','/api/folders?path='+encodeURIComponent(path||'')).then(d=>{
-  FLDPATH=d.path;el('fldPath').textContent=d.path;
-  el('fldDrives').innerHTML=(d.drives||[]).map(dr=>`<button class="btn-ghost btn-sm" onclick="loadFolder('${esc(dr)}')">${dr}</button>`).join('')
-    +`<button class="btn-ghost btn-sm" onclick="loadFolder('${esc(d.parent)}')">${t('fld.up')}</button>`;
-  el('fldList').innerHTML=(d.dirs||[]).map(x=>`<div class="it" onclick="loadFolder('${esc(x.path)}')">📁 ${esc(x.name)}</div>`).join('')
-    ||`<div class="it" style="color:var(--mut)">${t('fld.empty')}</div>`;});}
-function chooseFolder(){if(FLDCB)FLDCB(FLDPATH);close_('fldOv');}
+// ---------------- folder picker (native OS dialog) ----------------
+function pickFolder(setter){
+  api('POST','/api/pickfolder',{initial:(STATE.settings.download_dir||'')}).then(r=>{
+    if(r && r.path){ setter(r.path); }
+    else if(r && r.error){ alert(t('fld.err')); }
+    // r.path boş = kullanıcı iptal etti → dokunma
+  }).catch(()=>alert(t('fld.err')));
+}
 function setOptDir(v){el('optDir').value=v;}
 
 applyI18n();poll();setInterval(poll,800);
