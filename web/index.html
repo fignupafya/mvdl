@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mvdl</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b24; --panel2:#1d2430; --line:#28313f;
+    --tx:#e7ecf3; --mut:#8a94a6; --acc:#4f8cff; --acc2:#7b5cff;
+    --ok:#31c96a; --warn:#ffb020; --dang:#ff5d5d; --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 70% -10%,#182234 0%,var(--bg) 55%);
+    color:var(--tx);font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;color:#fff;
+    background:var(--panel2);padding:9px 14px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+  button:hover{filter:brightness(1.15)}
+  button:active{transform:translateY(1px)}
+  .btn-pri{background:linear-gradient(135deg,var(--acc),var(--acc2));font-weight:600}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--mut)}
+  .btn-ghost:hover{color:var(--tx);border-color:var(--acc)}
+  .btn-sm{padding:6px 11px;font-size:13px;border-radius:8px}
+  input,select{font:inherit;background:var(--bg);border:1px solid var(--line);
+    color:var(--tx);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+  input:focus,select:focus{border-color:var(--acc)}
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding:18px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;
+    background:rgba(14,17,23,.82);backdrop-filter:blur(10px);z-index:5}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{font-size:26px}
+  .brand h1{margin:0;font-size:18px;letter-spacing:.3px}
+  .brand small{color:var(--mut);font-weight:400}
+  .hbtns{display:flex;gap:10px;align-items:center}
+  .lang{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .langbtn{background:transparent;color:var(--mut);padding:7px 10px;border-radius:0;font-size:12.5px;font-weight:600}
+  .langbtn.on{background:var(--panel2);color:var(--tx)}
+  main{max-width:920px;margin:0 auto;padding:22px}
+  .addbar{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:12px;box-shadow:var(--shadow)}
+  .addbar input{flex:1;font-size:15px}
+  .hint{color:var(--mut);font-size:12.5px;margin:8px 4px 0}
+  .queue{margin-top:22px;display:flex;flex-direction:column;gap:14px;
+    max-height:calc(100vh - 250px);overflow-y:auto;padding-right:6px}
+  .empty{color:var(--mut);text-align:center;padding:60px 20px}
+  .empty .em{font-size:44px;opacity:.5}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;box-shadow:var(--shadow)}
+  .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .card .name{font-weight:600;word-break:break-word}
+  .card .sub{color:var(--mut);font-size:12.5px;margin-top:2px}
+  .badge{font-size:12px;padding:4px 10px;border-radius:999px;white-space:nowrap;background:var(--panel2);color:var(--mut)}
+  .badge.run{background:rgba(79,140,255,.16);color:#8fb6ff}
+  .badge.done{background:rgba(49,201,106,.16);color:#5fe293}
+  .badge.err{background:rgba(255,93,93,.16);color:#ff9090}
+  .badge.pause{background:rgba(255,176,32,.16);color:#ffcf78}
+  .badge.mux{background:rgba(123,92,255,.18);color:#b6a4ff}
+  .bar{height:10px;background:#0b0e13;border-radius:999px;overflow:hidden;margin:13px 0 10px;border:1px solid var(--line)}
+  .bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .4s}
+  .bar>i.mux{background:linear-gradient(90deg,#7b5cff,#4f8cff);background-size:200% 100%;animation:flow 1.1s linear infinite}
+  @keyframes flow{to{background-position:-200% 0}}
+  .meta{display:flex;flex-wrap:wrap;gap:14px;color:var(--mut);font-size:12.5px;align-items:center}
+  .chip{background:var(--panel2);padding:3px 9px;border-radius:8px}
+  .chip.warnc{background:rgba(255,176,32,.16);color:#ffcf78}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .spacer{flex:1}
+  .top{cursor:pointer}
+  .chev{margin-left:7px;font-size:10px;opacity:.65}
+  .details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;
+    display:grid;gap:6px;font-size:12.5px;max-height:240px;overflow:auto}
+  .drow{display:flex;gap:12px}
+  .drow>span{color:var(--mut);min-width:96px;flex-shrink:0}
+  .drow>b{font-weight:600;word-break:break-all}
+  .mono{font-family:Consolas,"SF Mono",monospace;font-weight:500;font-size:12px}
+  .ov{position:fixed;inset:0;background:rgba(6,9,14,.62);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+  .ov.on{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    width:560px;max-width:100%;max-height:88vh;overflow:auto;box-shadow:var(--shadow)}
+  .modal h3{margin:0;padding:18px 22px;border-bottom:1px solid var(--line);font-size:16px;
+    display:flex;justify-content:space-between;align-items:center}
+  .modal .body{padding:20px 22px}
+  .modal .foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+  label.fld{display:block;margin:14px 0}
+  label.fld span{display:block;color:var(--mut);font-size:12.5px;margin-bottom:6px}
+  .row{display:flex;gap:10px}
+  .x{background:transparent;color:var(--mut);padding:2px 8px;font-size:20px}
+  .log{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;
+    font:12px/1.6 Consolas,monospace;color:var(--mut);max-height:170px;overflow:auto;white-space:pre-wrap}
+  .spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--acc);
+    border-radius:50%;display:inline-block;animation:sp .7s linear infinite;vertical-align:-3px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .cand{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;
+    cursor:pointer;display:flex;gap:12px;align-items:center}
+  .cand:hover{border-color:var(--acc)}
+  .cand.sel{border-color:var(--acc);background:rgba(79,140,255,.08)}
+  .cand .q{color:var(--mut);font-size:12.5px}
+  .folderlist{border:1px solid var(--line);border-radius:10px;max-height:240px;overflow:auto}
+  .folderlist .it{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}
+  .folderlist .it:hover{background:var(--panel2)}
+  .drives{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .path{font:12px/1.5 monospace;color:var(--mut);word-break:break-all;margin:6px 0}
+  .note{background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.3);color:#ffcf78;
+    padding:10px 12px;border-radius:10px;font-size:13px;margin:10px 0}
+  .note.err{background:rgba(255,93,93,.1);border-color:rgba(255,93,93,.3);color:#ff9a9a}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">🎬</span>
+    <div><h1>mvdl <small data-i18n="app.subtitle">· download manager</small></h1></div></div>
+  <div class="hbtns">
+    <div class="lang">
+      <button class="langbtn" data-l="en" onclick="setLang('en')">EN</button>
+      <button class="langbtn" data-l="tr" onclick="setLang('tr')">TR</button>
+    </div>
+    <button class="btn-ghost" onclick="openSettings()"><span>⚙</span><span data-i18n="btn.settings">Settings</span></button>
+    <button class="btn-pri" onclick="openAdd()"><span>＋</span><span data-i18n="btn.new">New download</span></button>
+  </div>
+</header>
+
+<main>
+  <div class="addbar">
+    <input id="quickUrl" data-i18n-ph="addbar.ph" onkeydown="if(event.key==='Enter')quickAdd()">
+    <button class="btn-pri" onclick="quickAdd()" data-i18n="addbar.btn">Detect &amp; Add</button>
+  </div>
+  <div class="hint" data-i18n="addbar.hint"></div>
+  <div class="queue" id="queue"></div>
+</main>
+
+<!-- ADD MODAL -->
+<div class="ov" id="addOv">
+  <div class="modal">
+    <h3><span data-i18n="add.title">New Download</span><button class="x" onclick="closeAdd()">×</button></h3>
+    <div class="body">
+      <div id="stInput">
+        <label class="fld"><span data-i18n="add.urlLabel">Page address or m3u8 link</span>
+          <input id="addUrl" placeholder="https://…"></label>
+        <div id="addNote"></div>
+      </div>
+      <div id="stDetect" hidden>
+        <p><span class="spin"></span> &nbsp;<span data-i18n="add.detecting">Detecting stream…</span>
+          <span id="detTitle" style="color:var(--mut)"></span></p>
+        <div class="log" id="detLog"></div>
+      </div>
+      <div id="stOpts" hidden>
+        <div id="candWrap"></div>
+        <label class="fld"><span data-i18n="add.name">File name</span><input id="optName"></label>
+        <div class="row">
+          <label class="fld" style="flex:1"><span data-i18n="add.quality">Quality</span>
+            <select id="optQuality"></select></label>
+          <label class="fld" style="width:160px"><span data-i18n="add.conn">Parallel connections</span>
+            <input id="optConn" type="number" min="1" max="64" value="16"></label>
+        </div>
+        <div id="connHint" class="hint" style="margin:-6px 0 0"></div>
+        <label class="fld"><span data-i18n="add.rangeLabel">Part to download</span>
+          <select id="optRange" onchange="rangeToggle()">
+            <option value="full" data-i18n="add.rangeFull">All</option>
+            <option value="part" data-i18n="add.rangePart">Specific range</option>
+          </select></label>
+        <div id="rangeRow" class="row" hidden>
+          <label class="fld" style="flex:1;margin-top:0"><span data-i18n="add.start">Start (mm:ss)</span>
+            <input id="optStart" placeholder="12:30"></label>
+          <label class="fld" style="flex:1;margin-top:0"><span data-i18n="add.end">End (mm:ss)</span>
+            <input id="optEnd" placeholder="45:00"></label>
+        </div>
+        <label class="fld" id="subsField" hidden><span data-i18n="add.subs">Subtitles</span>
+          <select id="optSubs"></select></label>
+        <label class="fld"><span data-i18n="add.folder">Folder</span>
+          <div class="row"><input id="optDir" readonly>
+            <button class="btn-ghost btn-sm" onclick="openFolder(setOptDir)" data-i18n="add.change">Change</button></div></label>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn-ghost" onclick="closeAdd()" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn-pri" id="addPrimary" onclick="detectStep()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="ov" id="setOv">
+  <div class="modal">
+    <h3><span data-i18n="set.title">Settings</span><button class="x" onclick="close_('setOv')">×</button></h3>
+    <div class="body">
+      <label class="fld"><span data-i18n="set.defaultFolder">Default download folder</span>
+        <div class="row"><input id="setDir" readonly>
+          <button class="btn-ghost btn-sm" onclick="openFolder(v=>setDir.value=v)" data-i18n="add.change">Change</button></div></label>
+      <div class="row">
+        <label class="fld" style="flex:1"><span data-i18n="set.maxParallel">Max simultaneous downloads (global)</span>
+          <input id="setPar" type="number" min="1" max="30"></label>
+        <label class="fld" style="flex:1"><span data-i18n="set.defaultConn">Default connections per download</span>
+          <input id="setConn" type="number" min="1" max="64"></label>
+      </div>
+      <div class="hint" data-i18n-html="set.hint"></div>
+      <div id="ffWarn"></div>
+    </div>
+    <div class="foot">
+      <button class="btn-ghost" onclick="close_('setOv')" data-i18n="set.close">Close</button>
+      <button class="btn-pri" onclick="saveSettings()" data-i18n="set.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER MODAL -->
+<div class="ov" id="fldOv">
+  <div class="modal">
+    <h3><span data-i18n="fld.title">Choose folder</span><button class="x" onclick="close_('fldOv')">×</button></h3>
+    <div class="body">
+      <div class="drives" id="fldDrives"></div>
+      <div class="path" id="fldPath"></div>
+      <div class="folderlist" id="fldList"></div>
+    </div>
+    <div class="foot">
+      <button class="btn-ghost" onclick="close_('fldOv')" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn-pri" onclick="chooseFolder()" data-i18n="fld.choose">Choose this folder</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------------- i18n ----------------
+const I18N = {
+ en:{
+  "app.subtitle":"· download manager","btn.settings":"Settings","btn.new":"New download","btn.cancel":"Cancel",
+  "addbar.ph":"Paste the episode / video page URL (m3u8 works too)…","addbar.btn":"Detect & Add",
+  "addbar.hint":"Just paste the page URL — the app finds the m3u8 itself. If there are several streams it will ask.",
+  "empty.title":"No downloads yet.","empty.hint":"Paste a page URL above.",
+  "state.queued":"Queued","state.running":"Downloading","state.paused":"Paused","state.muxing":"Converting",
+  "state.done":"Completed","state.error":"Error","state.canceled":"Canceled","state.detecting":"Reconnecting…",
+  "chip.detecting":"🔄 refreshing the stream link…",
+  "sub.preparing":"preparing…","sub.parts":"{done}/{total} parts",
+  "chip.conn":"{n} connections","chip.elapsed":"{t} elapsed","chip.left":"{t} left","chip.throttled":"⚠ slowed down",
+  "chip.muxing":"🎞 converting to mp4…","chip.queued":"waiting in queue…","q.best":"best",
+  "act.pause":"⏸ Pause","act.resume":"▶ Resume","act.cancel":"✕ Cancel","act.retry":"↻ Retry","act.remove":"Remove",
+  "act.reveal":"📂 Show in folder","act.open":"▶ Open",
+  "det.status":"Status","det.quality":"Quality","det.parts":"Parts","det.size":"Size","det.time":"Time",
+  "det.avg":"Avg speed","det.range":"Range","det.file":"File","det.folder":"Folder","det.source":"Source","det.error":"Error",
+  "add.title":"New Download","add.urlLabel":"Page address or m3u8 link","add.detecting":"Detecting stream…",
+  "add.name":"File name","add.quality":"Quality","add.conn":"Parallel connections","add.rangeLabel":"Part to download",
+  "add.rangeFull":"All","add.rangePart":"Specific range (skip the watched part)",
+  "add.start":"Start (mm:ss) — empty = from start","add.end":"End (mm:ss) — empty = to end",
+  "add.folder":"Folder","add.change":"Change","add.detectBtn":"Detect","add.startBtn":"Start Download",
+  "add.subs":"Subtitles","subs.none":"None (no subtitles)",
+  "q.auto":"Automatic (best)","conn.normal":"8–16 is ideal. Auto-adjusts if throttled.",
+  "conn.high":"⚠ High value: more ban / 429 risk, usually no faster. Auto-reduces when throttled.",
+  "cand.stream":"Stream {n}","cand.single":"single quality","cand.pick":"{n} separate streams found — pick one.",
+  "detect.none":"No stream found automatically. The video didn't play, or the site uses a different method. You can paste the m3u8 link directly.",
+  "detect.multiple":"{n} separate streams found — pick one.",
+  "detect.dash_only":"This site uses DASH (.mpd); this version supports only HLS.",
+  "detect.fail":"Detection failed: {m}. You can paste the m3u8 link directly.",
+  "err.drm":"DRM-protected content — cannot be downloaded.","err.token":"Token expired. Re-add the page.",
+  "err.no_segments":"No playable stream found in the manifest.","err.range_empty":"No parts in the selected range.",
+  "err.parts_failed":"Some parts couldn't be downloaded (token may have expired). Retry or re-add.",
+  "set.title":"Settings","set.defaultFolder":"Default download folder",
+  "set.maxParallel":"Max simultaneous downloads (global)","set.defaultConn":"Default connections per download",
+  "set.hint":"<b>Max simultaneous downloads</b> = total across all sites (not per site). Many at once from different sites is safe against bans, but your bandwidth is split — more isn't faster.<br><b>Connections</b> 8–16 is ideal; higher rarely helps and raises the throttle (429) risk — the app auto-reduces when throttled.",
+  "set.close":"Close","set.save":"Save","set.ffWarn":"ffmpeg not found — output stays .ts. Run setup (or add ffmpeg) to get .mp4.",
+  "fld.title":"Choose folder","fld.up":"⬆ up","fld.empty":"(no subfolders)","fld.choose":"Choose this folder",
+  "open.fail":"Couldn't open: {m}","unit.sec":"s","unit.min":"min","range.end":"end"
+ },
+ tr:{
+  "app.subtitle":"· indirme yöneticisi","btn.settings":"Ayarlar","btn.new":"Yeni İndirme","btn.cancel":"İptal",
+  "addbar.ph":"Bölüm / video sayfasının adresini yapıştır (m3u8 de olur)…","addbar.btn":"Tespit Et & Ekle",
+  "addbar.hint":"Sayfa adresini yapıştırman yeterli — m3u8'i uygulama kendi bulur. Birden fazla akış varsa sana sorar.",
+  "empty.title":"Henüz indirme yok.","empty.hint":"Yukarıya bir sayfa adresi yapıştır.",
+  "state.queued":"Sırada","state.running":"İniyor","state.paused":"Duraklatıldı","state.muxing":"Birleştiriliyor",
+  "state.done":"Tamamlandı","state.error":"Hata","state.canceled":"İptal edildi","state.detecting":"Yeniden bağlanılıyor…",
+  "chip.detecting":"🔄 bağlantı tazeleniyor…",
+  "sub.preparing":"hazırlanıyor…","sub.parts":"{done}/{total} parça",
+  "chip.conn":"{n} bağlantı","chip.elapsed":"{t} geçti","chip.left":"kalan {t}","chip.throttled":"⚠ yavaşlatıldı",
+  "chip.muxing":"🎞 mp4'e dönüştürülüyor…","chip.queued":"sırada bekliyor…","q.best":"en iyi",
+  "act.pause":"⏸ Duraklat","act.resume":"▶ Devam","act.cancel":"✕ İptal","act.retry":"↻ Tekrar dene","act.remove":"Kaldır",
+  "act.reveal":"📂 Klasörde göster","act.open":"▶ Aç",
+  "det.status":"Durum","det.quality":"Kalite","det.parts":"Parça","det.size":"Boyut","det.time":"Süre",
+  "det.avg":"Ort. hız","det.range":"Aralık","det.file":"Dosya","det.folder":"Klasör","det.source":"Kaynak","det.error":"Hata",
+  "add.title":"Yeni İndirme","add.urlLabel":"Sayfa adresi veya m3u8 bağlantısı","add.detecting":"Akış tespit ediliyor…",
+  "add.name":"Dosya adı","add.quality":"Kalite","add.conn":"Paralel bağlantı","add.rangeLabel":"İndirilecek kısım",
+  "add.rangeFull":"Tamamı","add.rangePart":"Belirli aralık (izlediğim kısmı atla)",
+  "add.start":"Başlangıç (dk:sn) — boş=baştan","add.end":"Bitiş (dk:sn) — boş=sona",
+  "add.folder":"Klasör","add.change":"Değiştir","add.detectBtn":"Tespit Et","add.startBtn":"İndirmeye Başla",
+  "add.subs":"Altyazı","subs.none":"Yok",
+  "q.auto":"Otomatik (en iyi)","conn.normal":"8–16 ideal. Takılırsa otomatik ayarlanır.",
+  "conn.high":"⚠ Yüksek değer: ban / 429 riski artar, hız genelde artmaz. Uygulama takılınca otomatik düşürür.",
+  "cand.stream":"Akış {n}","cand.single":"tek kalite","cand.pick":"{n} ayrı akış bulundu — birini seç.",
+  "detect.none":"Otomatik akış bulunamadı. Video oynamadı ya da site farklı bir yöntem kullanıyor. m3u8 bağlantısını doğrudan yapıştırabilirsin.",
+  "detect.multiple":"{n} ayrı akış bulundu — birini seç.",
+  "detect.dash_only":"Bu site DASH (.mpd) kullanıyor; bu sürüm sadece HLS destekler.",
+  "detect.fail":"Tespit başarısız: {m}. m3u8 bağlantısını doğrudan yapıştırabilirsin.",
+  "err.drm":"DRM korumalı içerik — indirilemez.","err.token":"Token süresi doldu. Sayfayı yeniden ekle.",
+  "err.no_segments":"Manifest'te oynatılabilir akış yok.","err.range_empty":"Seçilen aralıkta parça yok.",
+  "err.parts_failed":"Bazı parçalar inemedi (token süresi dolmuş olabilir). Tekrar dene ya da yeniden ekle.",
+  "set.title":"Ayarlar","set.defaultFolder":"Varsayılan indirme klasörü",
+  "set.maxParallel":"Aynı anda en fazla indirme (genel)","set.defaultConn":"İndirme başına varsayılan bağlantı",
+  "set.hint":"<b>Aynı anda en fazla indirme</b> = tüm siteler toplamı (site başına değil). Farklı sitelerden çok indirme ban açısından güvenli ama internet hızın hepsine bölünür — daha fazlası hızlandırmaz.<br><b>Bağlantı</b> 8–16 ideal; yükseği genelde hızlandırmaz, engel (429) riskini artırır — uygulama takılınca otomatik azaltır.",
+  "set.close":"Kapat","set.save":"Kaydet","set.ffWarn":"ffmpeg bulunamadı — çıktı .ts olur. Kurulumu çalıştır (veya ffmpeg ekle) ki .mp4 üretilsin.",
+  "fld.title":"Klasör Seç","fld.up":"⬆ üst klasör","fld.empty":"(alt klasör yok)","fld.choose":"Bu klasörü seç",
+  "open.fail":"Açılamadı: {m}","unit.sec":"sn","unit.min":"dk","range.end":"son"
+ }
+};
+let LANG = (()=>{try{return localStorage.getItem('mvdl_lang')||'en'}catch(e){return 'en'}})();
+function t(key,p){let s=(I18N[LANG]&&I18N[LANG][key])||I18N.en[key]||key;
+  if(p)for(const k in p)s=s.split('{'+k+'}').join(p[k]);return s;}
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>e.innerHTML=t(e.dataset.i18nHtml));
+  document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('on',b.dataset.l===LANG));
+  document.documentElement.lang=LANG;
+  const ap=el('addPrimary'); if(ap) ap.textContent = ap.dataset.mode==='start'?t('add.startBtn'):t('add.detectBtn');
+}
+function setLang(l){LANG=l;try{localStorage.setItem('mvdl_lang',l)}catch(e){}applyI18n();renderQueue();}
+
+// ---------------- helpers ----------------
+const el=id=>document.getElementById(id);
+let STATE={jobs:[],settings:{}}, CANDS=[], SELCAND=0, FLDPATH="", FLDCB=null, EXPANDED=new Set();
+const api=(m,p,b)=>fetch(p,{method:m,headers:{'Content-Type':'application/json'},
+  body:b?JSON.stringify(b):undefined}).then(r=>r.json());
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtEta(s){if(s==null||s<0)return '—';if(s<60)return s+t('unit.sec');const m=Math.floor(s/60);return m+t('unit.min')+' '+(s%60)+t('unit.sec');}
+function fmtClock(s){s=Math.max(0,s|0);const m=Math.floor(s/60),ss=s%60;return m+':'+String(ss).padStart(2,'0');}
+function parseTime(s){s=(s||'').trim();if(!s)return null;const a=s.split(':').map(x=>+x);if(a.some(isNaN))return null;let v=0;for(const p of a)v=v*60+p;return v;}
+function sanitize(s){return (s||'video').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120)||'video';}
+function originOf(u){try{return new URL(u).origin+'/';}catch(e){return '';}}
+
+// ---------------- queue ----------------
+const CLS={queued:'',running:'run',paused:'pause',muxing:'mux',detecting:'mux',done:'done',error:'err',canceled:'err'};
+function poll(){api('GET','/api/state').then(s=>{STATE=s;renderQueue();}).catch(()=>{});}
+function renderQueue(){
+  const q=el('queue'), js=STATE.jobs||[];
+  if(!js.length){q.innerHTML=`<div class="empty"><div class="em">📥</div>
+    <p>${t('empty.title')}<br>${t('empty.hint')}</p></div>`;return;}
+  q.innerHTML=js.map(j=>{
+    const st=j.state, pct=j.percent||0, qLabel=j.quality==='best'?t('q.best'):j.quality+'p';
+    let mid='';
+    if(st==='running'||st==='paused'){
+      const size=j.est_mb?`${j.mb} / ~${j.est_mb} MB`:`${j.mb} MB`;
+      mid=`<span class="chip">📦 ${size}</span><span class="chip">⚡ ${j.speed_mbps} MB/s</span>
+        <span class="chip">🔗 ${t('chip.conn',{n:j.conn})}</span>
+        <span class="chip">⏱ ${t('chip.elapsed',{t:fmtEta(j.elapsed)})}</span>
+        <span class="chip">⏳ ${t('chip.left',{t:fmtEta(j.eta)})}</span>
+        ${j.throttled?`<span class="chip warnc">${t('chip.throttled')}</span>`:''}`;
+    }else if(st==='done'){mid=`<span class="chip">💾 ${j.mb} MB · ${qLabel}</span>${j.elapsed?`<span class="chip">⏱ ${fmtEta(j.elapsed)}</span>`:''}`;}
+    else if(st==='muxing'){mid=`<span class="chip">${t('chip.muxing')}</span>`;}
+    else if(st==='detecting'){mid=`<span class="chip">${t('chip.detecting')}</span>`;}
+    else if(st==='error'){mid=`<span class="chip warnc">${esc(errText(j))}</span>`;}
+    else if(st==='queued'){mid=`<span class="chip">${t('chip.queued')}</span>`;}
+    let acts='';
+    if(st==='running')acts=`<button class="btn-ghost btn-sm" onclick="ctl('${j.id}','pause')">${t('act.pause')}</button><button class="btn-ghost btn-sm" onclick="ctl('${j.id}','cancel')">${t('act.cancel')}</button>`;
+    else if(st==='paused')acts=`<button class="btn-pri btn-sm" onclick="ctl('${j.id}','resume')">${t('act.resume')}</button><button class="btn-ghost btn-sm" onclick="ctl('${j.id}','cancel')">${t('act.cancel')}</button>`;
+    else if(st==='queued')acts=`<button class="btn-ghost btn-sm" onclick="ctl('${j.id}','cancel')">${t('act.cancel')}</button>`;
+    else if(st==='done')acts=`<button class="btn-pri btn-sm" onclick="openJob('${j.id}',true)">${t('act.reveal')}</button><button class="btn-ghost btn-sm" onclick="openJob('${j.id}',false)">${t('act.open')}</button><button class="btn-ghost btn-sm" onclick="ctl('${j.id}','remove')">${t('act.remove')}</button>`;
+    else if(st==='error'||st==='canceled')acts=`<button class="btn-pri btn-sm" onclick="ctl('${j.id}','resume')">${t('act.retry')}</button><button class="btn-ghost btn-sm" onclick="ctl('${j.id}','remove')">${t('act.remove')}</button>`;
+    else if(st==='detecting')acts=`<button class="btn-ghost btn-sm" onclick="ctl('${j.id}','cancel')">${t('act.cancel')}</button>`;
+    const showBar=['running','paused','muxing','detecting','queued'].includes(st), exp=EXPANDED.has(j.id);
+    const rangeTxt=(j.range&&(j.range[0]||j.range[1]))?` · ✂ ${fmtClock(j.range[0])}–${j.range[1]?fmtClock(j.range[1]):t('range.end')}`:'';
+    const fname=(j.out_path||'').split(/[\\/]/).pop()||(j.name+'.mp4');
+    const avg=(j.elapsed&&j.mb)?((j.mb/j.elapsed).toFixed(2)+' MB/s'):'—';
+    const details=`<div class="details" ${exp?'':'hidden'}>
+      <div class="drow"><span>${t('det.status')}</span><b>${t('state.'+st)}</b></div>
+      <div class="drow"><span>${t('det.quality')}</span><b>${qLabel}</b></div>
+      <div class="drow"><span>${t('det.parts')}</span><b>${j.done}/${j.total||'?'}</b></div>
+      <div class="drow"><span>${t('det.size')}</span><b>${j.mb} MB${(j.est_mb&&st!=='done')?(' / ~'+j.est_mb+' MB'):''}</b></div>
+      ${j.elapsed?`<div class="drow"><span>${t('det.time')}</span><b>${fmtEta(j.elapsed)}</b></div>`:''}
+      ${j.elapsed?`<div class="drow"><span>${t('det.avg')}</span><b>${avg}</b></div>`:''}
+      ${(j.range&&(j.range[0]||j.range[1]))?`<div class="drow"><span>${t('det.range')}</span><b>${fmtClock(j.range[0])}–${j.range[1]?fmtClock(j.range[1]):t('range.end')}</b></div>`:''}
+      <div class="drow"><span>${t('det.file')}</span><b class="mono">${esc(fname)}</b></div>
+      <div class="drow"><span>${t('det.folder')}</span><b class="mono">${esc(j.dir||'')}</b></div>
+      ${j.page_url?`<div class="drow"><span>${t('det.source')}</span><b class="mono">${esc(j.page_url)}</b></div>`:''}
+      ${st==='error'?`<div class="drow"><span>${t('det.error')}</span><b style="color:var(--dang)">${esc(errText(j))}</b></div>`:''}
+    </div>`;
+    return `<div class="card">
+      <div class="top" onclick="toggleExp('${j.id}')">
+        <div><div class="name">${esc(j.name)}.mp4</div>
+        <div class="sub">${j.total?((LANG==='tr'?'%'+pct:pct+'%')+' · '+t('sub.parts',{done:j.done,total:j.total})):t('sub.preparing')}${rangeTxt}</div></div>
+        <span class="badge ${CLS[st]}">${t('state.'+st)}<span class="chev">${exp?'▲':'▼'}</span></span></div>
+      ${showBar?`<div class="bar"><i class="${(st==='muxing'||st==='detecting')?'mux':''}" style="width:${(st==='muxing'||st==='detecting')?100:pct}%"></i></div>`:''}
+      <div class="meta">${mid}<span class="spacer"></span><div class="actions">${acts}</div></div>
+      ${details}</div>`;
+  }).join('');
+}
+function errText(j){return j.error_code?t('err.'+j.error_code):(j.error||t('state.error'));}
+function ctl(id,a){api('POST','/api/jobs/'+id+'/'+a).then(poll);}
+function openJob(id,reveal){api('POST','/api/open',{id,reveal}).then(r=>{if(r&&r.ok===false)alert(t('open.fail',{m:r.error||''}));});}
+function toggleExp(id){EXPANDED.has(id)?EXPANDED.delete(id):EXPANDED.add(id);renderQueue();}
+
+// ---------------- add flow ----------------
+function setPrimary(mode){const b=el('addPrimary');b.dataset.mode=mode;b.textContent=mode==='start'?t('add.startBtn'):t('add.detectBtn');b.onclick=mode==='start'?startJob:detectStep;b.hidden=false;}
+function openAdd(){CANDS=[];el('addUrl').value=el('quickUrl').value||'';
+  el('stInput').hidden=false;el('stDetect').hidden=true;el('stOpts').hidden=true;el('addNote').innerHTML='';
+  setPrimary('detect');el('addOv').classList.add('on');el('addUrl').focus();}
+function closeAdd(){el('addOv').classList.remove('on');}
+function quickAdd(){el('quickUrl').value=el('quickUrl').value.trim();if(!el('quickUrl').value)return;openAdd();detectStep();}
+function detectStep(){
+  const url=el('addUrl').value.trim();if(!url)return;
+  if(/\.m3u8(\?|$)/i.test(url)){CANDS=[{url,kind:'master',qualities:[],referer:originOf(url)}];window._RES={};gotoOptions(true);return;}
+  el('stInput').hidden=true;el('stDetect').hidden=false;el('stOpts').hidden=true;el('addPrimary').hidden=true;el('detLog').textContent='';
+  api('POST','/api/detect',{url}).then(r=>pollDetect(r.detect_id));
+}
+function pollDetect(id){api('GET','/api/detect/'+id).then(d=>{
+  el('detLog').textContent=(d.log||[]).join('\n');el('detLog').scrollTop=1e9;
+  if(d.status==='done')onDetected(d.result||{});else setTimeout(()=>pollDetect(id),500);});}
+function onDetected(res){
+  el('detTitle').textContent=res.title?('· '+res.title):'';window._RES=res;CANDS=res.candidates||[];
+  if(!CANDS.length){el('stDetect').hidden=true;el('stInput').hidden=false;setPrimary('detect');
+    const msg=res.error?t('detect.fail',{m:res.error}):(res.note?t('detect.'+res.note):t('detect.none'));
+    el('addNote').innerHTML=`<div class="note err">${esc(msg)}</div>`;return;}
+  gotoOptions();
+}
+function gotoOptions(direct){
+  const res=window._RES||{};SELCAND=0;
+  el('stDetect').hidden=true;el('stInput').hidden=true;el('stOpts').hidden=false;setPrimary('start');
+  let cw='';
+  if(CANDS.length>1){el('addNote').innerHTML=`<div class="note">${t('detect.multiple',{n:CANDS.length})}</div>`;
+    cw=CANDS.map((c,i)=>`<div class="cand ${i===0?'sel':''}" onclick="selCand(${i})">
+      <div style="flex:1"><b>${t('cand.stream',{n:i+1})}</b><div class="q">${c.qualities&&c.qualities.length?c.qualities.map(h=>h+'p').join(' · '):t('cand.single')}</div></div>
+      <input type="radio" name="cand" ${i===0?'checked':''}></div>`).join('');
+  } else el('addNote').innerHTML='';
+  el('candWrap').innerHTML=cw;applyCand(direct);
+}
+function selCand(i){SELCAND=i;document.querySelectorAll('.cand').forEach((e,k)=>{e.classList.toggle('sel',k===i);const r=e.querySelector('input');if(r)r.checked=(k===i);});applyCand();}
+function applyCand(direct){
+  const c=CANDS[SELCAND]||{},res=window._RES||{};
+  const title=(res.title||'').replace(/\s*[|\-–].*/,'').replace(/İzle.*/i,'').trim()||'video';
+  el('optName').value=direct?'video':sanitize(title);
+  let opts=`<option value="best">${t('q.auto')}</option>`;(c.qualities||[]).forEach(h=>opts+=`<option value="${h}">${h}p</option>`);
+  el('optQuality').innerHTML=opts;
+  el('optDir').value=STATE.settings.download_dir||'';el('optConn').value=STATE.settings.default_conn||16;
+  const subs=c.subs||[];
+  if(subs.length){let so=`<option value="">${t('subs.none')}</option>`;
+    subs.forEach(s=>{const v=s.lang||s.name||'sub';so+=`<option value="${esc(v)}">${esc(s.name||s.lang||'sub')}${s.lang?(' ('+esc(s.lang)+')'):''}</option>`;});
+    el('optSubs').innerHTML=so;el('subsField').hidden=false;}
+  else{el('optSubs').innerHTML='';el('subsField').hidden=true;}
+  el('optRange').value='full';el('optStart').value='';el('optEnd').value='';rangeToggle();connHintUpd();
+}
+function connHintUpd(){el('connHint').textContent=(+el('optConn').value||16)>24?t('conn.high'):t('conn.normal');}
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='optConn')connHintUpd();});
+function rangeToggle(){el('rangeRow').hidden=el('optRange').value!=='part';}
+function startJob(){
+  const c=CANDS[SELCAND]||{};let ss=null,es=null,title=sanitize(el('optName').value);
+  if(el('optRange').value==='part'){ss=parseTime(el('optStart').value);es=parseTime(el('optEnd').value);
+    if(ss!=null||es!=null){const a=ss!=null?Math.round(ss/60):0,b=es!=null?Math.round(es/60):null;
+      title+=` (${a}-${b!=null?b+t('unit.min'):t('range.end')})`;}}
+  api('POST','/api/jobs',{manifest_url:c.url,referer:c.referer||originOf(c.url),title,
+    quality:el('optQuality').value,dir:el('optDir').value,conn:+el('optConn').value||16,
+    page_url:el('addUrl').value.trim(),start_sec:ss,end_sec:es,
+    subs_lang:(el('subsField').hidden?'':el('optSubs').value)}).then(()=>{closeAdd();el('quickUrl').value='';poll();});
+}
+
+// ---------------- settings ----------------
+function openSettings(){el('setDir').value=STATE.settings.download_dir||'';
+  el('setPar').value=STATE.settings.max_parallel||3;el('setConn').value=STATE.settings.default_conn||16;
+  el('ffWarn').innerHTML=STATE.ffmpeg?'':`<div class="note">${t('set.ffWarn')}</div>`;
+  el('setOv').classList.add('on');}
+function saveSettings(){api('POST','/api/settings',{download_dir:el('setDir').value,
+  max_parallel:+el('setPar').value||3,default_conn:+el('setConn').value||16}).then(()=>{close_('setOv');poll();});}
+function close_(id){el(id).classList.remove('on');}
+
+// ---------------- folder picker ----------------
+function openFolder(cb){FLDCB=cb;loadFolder(STATE.settings.download_dir||'');el('fldOv').classList.add('on');}
+function loadFolder(path){api('GET','/api/folders?path='+encodeURIComponent(path||'')).then(d=>{
+  FLDPATH=d.path;el('fldPath').textContent=d.path;
+  el('fldDrives').innerHTML=(d.drives||[]).map(dr=>`<button class="btn-ghost btn-sm" onclick="loadFolder('${esc(dr)}')">${dr}</button>`).join('')
+    +`<button class="btn-ghost btn-sm" onclick="loadFolder('${esc(d.parent)}')">${t('fld.up')}</button>`;
+  el('fldList').innerHTML=(d.dirs||[]).map(x=>`<div class="it" onclick="loadFolder('${esc(x.path)}')">📁 ${esc(x.name)}</div>`).join('')
+    ||`<div class="it" style="color:var(--mut)">${t('fld.empty')}</div>`;});}
+function chooseFolder(){if(FLDCB)FLDCB(FLDPATH);close_('fldOv');}
+function setOptDir(v){el('optDir').value=v;}
+
+applyI18n();poll();setInterval(poll,800);
+</script>
+</body>
+</html>

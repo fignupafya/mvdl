@@ -1,0 +1,32 @@
+# --- Kullanıcı verisi / çalışma zamanı durumu ---
+/downloads/
+jobs.json
+settings.json
+mvdl.log
+PATH_yedek.txt
+
+# --- Kurulumla gelen ikili dosyalar (installer indirir; repoda tutulmaz) ---
+/bin/
+
+# --- Playwright / uygulama profili (terminalsiz pencere için geçici profil) ---
+.mvdl-profile/
+
+# --- PyInstaller paketleme çıktıları ---
+/build/
+/dist/
+*.spec
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+
+# --- İşletim sistemi ---
+.DS_Store
+Thumbs.db
+desktop.ini
